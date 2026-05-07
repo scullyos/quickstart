@@ -1,0 +1,421 @@
+# ScullyOS Quickstart — single-host docker compose definition.
+# Designed to be run from this directory: `docker compose up -d`.
+# See README.md for prerequisites and walkthrough.
+# See ../docs/scullyos-quickstart-design.md for the full design.
+
+name: scullyos
+
+networks:
+  scullyos:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  es-data:
+
+services:
+  # ─── MySQL ─────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    networks:
+      - scullyos
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      # Consumed by mysql-init/01-create-appuser.sh on first boot. Not
+      # native MYSQL_* vars the image recognises — just plain env passed
+      # through so the init script can interpolate them.
+      MYSQL_APPUSER: ${MYSQL_APPUSER}
+      MYSQL_APP_PASSWORD: ${MYSQL_APP_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    # Uncomment to expose MySQL to the host (e.g. for a desktop SQL client).
+    # Default off to avoid colliding with a local MySQL install.
+    # ports:
+    #   - "3306:3306"
+    # Generous timing so cold-starting on slow hosts (WSL2 / low-RAM
+    # Docker Desktop / underpowered boxes) doesn't trip the dependency
+    # wait. start_period 60s + 30 × 10s retries = 6 min total grace.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-uroot",
+          "-p${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # ─── DB init (one-shot per service) ────────────────────────────────────────
+  # Each runs the in-image `db-init.sh`, which is idempotent. With appuser +
+  # main_db pre-created by mysql-init/, only `migrate:run` actually does
+  # work (creates schema + seeds the bootstrap admin via migration).
+
+  person-db-init:
+    image: ${REGISTRY}/${PERSON_IMAGE}:${VERSION_PERSON}
+    container_name: person-db-init
+    restart: "no"
+    networks:
+      - scullyos
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - ./env/person.defaults.env
+      - ./env/person.env
+    environment:
+      DB_USERNAME: ${MYSQL_APPUSER}
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
+      DB_DATABASE_NAME: ${MYSQL_DATABASE}
+      ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # Seed admin — consumed by the BootstrapAdminPassword migration on
+      # first boot. We surface SEED_USER_PASSWORD as the user-facing knob
+      # in quickstart/.env and shim it to the var name the migration
+      # actually reads (BOOTSTRAP_ADMIN_PASSWORD).
+      SEED_USER_FIRST_NAME: ${SEED_USER_FIRST_NAME}
+      SEED_USER_LAST_NAME: ${SEED_USER_LAST_NAME}
+      SEED_USER_NAME: ${SEED_USER_NAME}
+      SEED_USER_PROVIDER: ${SEED_USER_PROVIDER}
+      BOOTSTRAP_ADMIN_PASSWORD: ${SEED_USER_PASSWORD}
+    entrypoint: ["/bin/sh", "/app/scripts/sh/rt/db-init.sh"]
+
+  authorization-db-init:
+    image: ${REGISTRY}/${AUTHORIZATION_IMAGE}:${VERSION_AUTHORIZATION}
+    container_name: authorization-db-init
+    restart: "no"
+    networks:
+      - scullyos
+    # Serialized after person-db-init: both create the shared appuser at
+    # the MySQL level, and concurrent CREATE USER attempts race. Person
+    # runs first; authorization runs once person has finished.
+    depends_on:
+      mysql:
+        condition: service_healthy
+      person-db-init:
+        condition: service_completed_successfully
+    env_file:
+      - ./env/authorization.defaults.env
+      - ./env/authorization.env
+    environment:
+      DB_USERNAME: ${MYSQL_APPUSER}
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
+      DB_DATABASE_NAME: ${MYSQL_DATABASE}
+      ROOT_DB_USERNAME: root
+      ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    entrypoint: ["/bin/sh", "/app/scripts/sh/rt/db-init.sh"]
+
+  bo-orc-db-init:
+    image: ${REGISTRY}/${BO_ORC_IMAGE}:${VERSION_BO_ORC}
+    container_name: bo-orc-db-init
+    restart: "no"
+    networks:
+      - scullyos
+    # bo-orc migrations call person + authorization APIs (e.g. to find the
+    # seed admin row before granting it a role), so both upstream services
+    # must be healthy — not just present and not just db-migrated. The
+    # mysql dep is implied transitively but kept explicit for clarity.
+    depends_on:
+      mysql:
+        condition: service_healthy
+      person-ms:
+        condition: service_healthy
+      authorization-ms:
+        condition: service_healthy
+    env_file:
+      - ./env/bo-orc.defaults.env
+      - ./env/bo-orc.env
+    environment:
+      DB_USERNAME: ${MYSQL_APPUSER}
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
+      DB_DATABASE_NAME: ${MYSQL_DATABASE}
+      ROOT_DB_USERNAME: root
+      ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # Required by bo-orc's GrantAdminRoleToSeedUser migration to find the
+      # admin row (created by person's SeedAdminPerson migration) and grant
+      # it the admin role.
+      SEED_USER_NAME: ${SEED_USER_NAME}
+    entrypoint: ["/bin/sh", "/app/scripts/sh/rt/db-init.sh"]
+
+  # ─── Microservices ─────────────────────────────────────────────────────────
+
+  person-ms:
+    image: ${REGISTRY}/${PERSON_IMAGE}:${VERSION_PERSON}
+    container_name: person-ms
+    restart: unless-stopped
+    networks:
+      - scullyos
+    depends_on:
+      person-db-init:
+        condition: service_completed_successfully
+    env_file:
+      - ./env/person.defaults.env
+      - ./env/person.env
+    environment:
+      DB_USERNAME: ${MYSQL_APPUSER}
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
+      DB_DATABASE_NAME: ${MYSQL_DATABASE}
+      ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SEED_USER_FIRST_NAME: ${SEED_USER_FIRST_NAME}
+      SEED_USER_LAST_NAME: ${SEED_USER_LAST_NAME}
+      SEED_USER_NAME: ${SEED_USER_NAME}
+      SEED_USER_PROVIDER: ${SEED_USER_PROVIDER}
+      BOOTSTRAP_ADMIN_PASSWORD: ${SEED_USER_PASSWORD}
+      #FIREBASE_KEY_FILE=config/your-fb-service-account.json
+    # /v1/ready is sufficient — NestJS module loading is synchronous, so
+    # by the time the readiness probe returns 200 the /mcp route is also
+    # registered and listening. (We previously also probed /mcp itself,
+    # but that produced log noise: every healthcheck cycle was a
+    # session-less GET that mcp-core correctly rejects + logs. See
+    # ../docs/todo.md "MCP rejection log noise" for the long-term fix.)
+    # Generous timing to match mysql / ES — on slow hosts (WSL2, low-RAM
+    # Docker Desktop), the *-db-init containers can chew up several minutes
+    # before this service even starts, by which point the host is already
+    # under load. start_period 90s + 30 × 10s retries = 6.5 min total grace.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:84/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  authorization-ms:
+    image: ${REGISTRY}/${AUTHORIZATION_IMAGE}:${VERSION_AUTHORIZATION}
+    container_name: authorization-ms
+    restart: unless-stopped
+    networks:
+      - scullyos
+    depends_on:
+      authorization-db-init:
+        condition: service_completed_successfully
+    env_file:
+      - ./env/authorization.defaults.env
+      - ./env/authorization.env
+    environment:
+      DB_USERNAME: ${MYSQL_APPUSER}
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
+      DB_DATABASE_NAME: ${MYSQL_DATABASE}
+      ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    # See person-ms healthcheck comment — same /v1/ready-is-enough rationale
+    # and same generous timing for slow-host tolerance.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:81/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  bo-orc-ms:
+    image: ${REGISTRY}/${BO_ORC_IMAGE}:${VERSION_BO_ORC}
+    container_name: bo-orc-ms
+    restart: unless-stopped
+    networks:
+      - scullyos
+    depends_on:
+      bo-orc-db-init:
+        condition: service_completed_successfully
+      person-ms:
+        condition: service_healthy
+      authorization-ms:
+        condition: service_healthy
+    env_file:
+      - ./env/bo-orc.defaults.env
+      - ./env/bo-orc.env
+    environment:
+      DB_USERNAME: ${MYSQL_APPUSER}
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD}
+      DB_DATABASE_NAME: ${MYSQL_DATABASE}
+      ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      # Required by bo-orc migrations + runtime references to the seed admin.
+      SEED_USER_NAME: ${SEED_USER_NAME}
+      # Agent / LLM — set LLM_API_KEY in quickstart/.env to enable the
+      # Admin Chat panel. Empty key disables the chat (rest of the stack
+      # still works).
+      LLM_PROVIDER: ${LLM_PROVIDER}
+      LLM_MODEL: ${LLM_MODEL}
+      LLM_API_KEY: ${LLM_API_KEY}
+    ports:
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT_BO_ORC}:8001"
+    # Generous timing — bo-orc starts last in the chain (after person/auth
+    # are healthy AND bo-orc-db-init has finished migrating), so by the
+    # time it boots the host is most under load. Matches mysql/ES grace
+    # so a slow first cold-start (WSL2 / low-RAM Docker Desktop) doesn't
+    # trip the dependency wait for scullyosapp.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8001/v1/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  # ─── Frontend ──────────────────────────────────────────────────────────────
+
+  scullyosapp:
+    image: ${REGISTRY}/${SCULLYOSAPP_IMAGE}:${VERSION_SCULLYOSAPP}
+    container_name: scullyosapp
+    restart: unless-stopped
+    networks:
+      - scullyos
+    depends_on:
+      bo-orc-ms:
+        condition: service_healthy
+    env_file:
+      - ./env/scullyosapp.defaults.env
+      - ./env/scullyosapp.env
+    environment:
+      # Browser-side URLs — must resolve from the host, not the compose network.
+      # Use ${HOST_BIND} (defaults to 127.0.0.1) instead of `localhost` so the
+      # SPA's API/Kibana calls don't depend on the host's IPv4-vs-IPv6 stack
+      # preference. `localhost` resolves to both ::1 and 127.0.0.1, browsers
+      # generally try IPv6 first, and Docker Desktop's IPv6 forwarding is
+      # unreliable on Windows / not enabled on Linux unless `--ipv6` is set.
+      # 127.0.0.1 sidesteps the whole question and works identically on
+      # Linux / macOS / Windows / WSL2.
+      VITE_BO_ORC_MS_URL_BASE: http://${HOST_BIND:-127.0.0.1}:${HOST_PORT_BO_ORC}
+      VITE_LOGGING_URL: http://${HOST_BIND:-127.0.0.1}:${HOST_PORT_KIBANA}/app/discover
+    ports:
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT_FRONTEND}:80"
+
+  # ─── Logging stack ─────────────────────────────────────────────────────────
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.27
+    container_name: elasticsearch
+    restart: unless-stopped
+    networks:
+      - scullyos
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      xpack.security.enabled: "true"
+      ELASTIC_PASSWORD: ${KIBANA_PASSWORD}
+      # Allow unauthenticated in-network clients (Fluent Bit) to write logs
+      # via the fluent_writer role created by es-setup.
+      xpack.security.authc.anonymous.username: anon_writer
+      xpack.security.authc.anonymous.roles: fluent_writer
+      xpack.security.authc.anonymous.authz_exception: "false"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    # Uncomment to expose ES to the host (e.g. for direct API testing).
+    # Default off to avoid colliding with a local Elasticsearch install.
+    # ports:
+    #   - "9200:9200"
+    # Generous timing — ES on a slow WSL2 / low-RAM Docker Desktop box
+    # can take 3-5 min to come up healthy. start_period 90s + 30 × 10s
+    # retries = 6.5 min total grace. Catches a genuinely-broken ES
+    # eventually, doesn't trip the dep wait on slow hosts.
+    # Healthcheck uses ${KIBANA_USERNAME}, the only ES user that's expected
+    # to be valid in steady state — es-setup.sh provisions it as a superuser
+    # and then disables the built-in elastic user. The pre-setup window
+    # (KIBANA_USERNAME doesn't exist yet) is bridged by es-setup gating on
+    # `service_started` rather than `service_healthy` and waiting on ES
+    # internally with the elastic bootstrap user — so by the time this
+    # healthcheck needs to pass, KIBANA_USERNAME is already provisioned.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf -u ${KIBANA_USERNAME}:${KIBANA_PASSWORD} http://localhost:9200/_cluster/health || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  es-setup:
+    image: curlimages/curl:latest
+    container_name: es-setup
+    restart: "no"
+    networks:
+      - scullyos
+    # service_started, not service_healthy — see elasticsearch healthcheck
+    # comment. es-setup.sh has its own wait-for-ES loop using the elastic
+    # bootstrap user, then provisions KIBANA_USERNAME so the ES healthcheck
+    # can start passing.
+    depends_on:
+      elasticsearch:
+        condition: service_started
+    environment:
+      ES_USERNAME: ${KIBANA_USERNAME}
+      ES_PASSWORD: ${KIBANA_PASSWORD}
+    volumes:
+      - ./setup:/setup:ro
+    entrypoint: ["/bin/sh", "/setup/es-setup.sh"]
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.27
+    container_name: kibana
+    restart: unless-stopped
+    networks:
+      - scullyos
+    depends_on:
+      es-setup:
+        condition: service_completed_successfully
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: ${KIBANA_USERNAME}
+      ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
+      # Pin Kibana's encryption keys so encrypted saved objects (alerts,
+      # action connectors with stored credentials, reporting) survive
+      # container recreates. Without these, Kibana auto-generates a new
+      # key each time the container is recreated and any encrypted saved
+      # object becomes undecryptable. Generate a real value via
+      # `openssl rand -hex 32` before first `up -d`.
+      XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+      XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
+    ports:
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT_KIBANA}:5601"
+    # Generous timing — Kibana on slow hosts can take 1-2 min on top of
+    # ES being up. Mirrors ES timing for consistency. start_period 90s
+    # + 30 × 10s retries = 6.5 min total grace.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sf -u ${KIBANA_USERNAME}:${KIBANA_PASSWORD} http://localhost:5601/api/status || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+
+  kibana-setup:
+    image: curlimages/curl:latest
+    container_name: kibana-setup
+    restart: "no"
+    networks:
+      - scullyos
+    depends_on:
+      kibana:
+        condition: service_healthy
+    environment:
+      ES_USERNAME: ${KIBANA_USERNAME}
+      ES_PASSWORD: ${KIBANA_PASSWORD}
+    volumes:
+      - ./setup:/setup:ro
+    entrypoint: ["/bin/sh", "/setup/kibana-setup.sh"]
+
+  fluent-bit:
+    image: fluent/fluent-bit:2.1
+    container_name: fluent-bit
+    restart: unless-stopped
+    networks:
+      - scullyos
+    depends_on:
+      es-setup:
+        condition: service_completed_successfully
+    environment:
+      FLUENT_BIT_CONTAINER_INCLUDE_REGEX: ${FLUENT_BIT_CONTAINER_INCLUDE_REGEX}
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./fluent-bit:/fluent-bit/etc:ro
