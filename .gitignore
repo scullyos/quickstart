@@ -11,6 +11,15 @@ firebase-*.json
 *service-account*.json
 *-credentials*.json
 
+# Exception: the bundled dev RSA keypair under dev-keys/ is intentionally
+# committed. It is dev-only by convention and by fingerprint — simple-core's
+# edge-auth boot validators refuse to start in production when the loaded
+# key matches the bundled dev fingerprint. See
+# docs/internal-jwt-authentication.md §6 (Key Management) for the full
+# story. These two files are the entire allow-list — do NOT broaden it.
+!dev-keys/jwt-private-dev.pem
+!dev-keys/jwt-public-dev.pem
+
 # compiled output
 /dist
 /node_modules
