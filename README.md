@@ -159,6 +159,7 @@ Which user created Jane Smith and when
 ```
 
 Everything the UI can do, the agent can do (and even more). Every action is logged and auditable. This is the agentic core — your system's built-in agent that operates all services through auto-generated MCP tools.
+
 **Bonus:** Using the UI try to create another user with the same email, when you get the error toast, click the error number and you will see the full log and error in Kibana!
 
 ### 3. Check the Logs
