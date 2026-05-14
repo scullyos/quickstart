@@ -1,0 +1,77 @@
+# Secrets — never commit. The top-level .env (filled in from .env.example
+# during setup) holds DB / Kibana / seed-admin / LLM-API-key values.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+id_rsa*
+*.p8
+firebase-*.json
+*service-account*.json
+*-credentials*.json
+
+# Exception: the bundled dev RSA keypair under dev-keys/ is intentionally
+# committed. It is dev-only by convention and by fingerprint — simple-core's
+# edge-auth boot validators refuse to start in production when the loaded
+# key matches the bundled dev fingerprint. See
+# docs/internal-jwt-authentication.md §6 (Key Management) for the full
+# story. These two files are the entire allow-list — do NOT broaden it.
+!dev-keys/jwt-private-dev.pem
+!dev-keys/jwt-public-dev.pem
+
+# compiled output
+/dist
+/node_modules
+# ignore config files
+/person/config/* 
+#ignore client sdk stuff
+/client/node_modules
+/client/dist
+
+# Logs
+/logs
+/log
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+#package manager
+.yarn/*
+!.yarn/releases
+./client/.yarn/*
+!./client/.yarn/releases
+client/.yarn/install-state.gz
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+#terraform files
+*.tfstate
+*.tfstate.*
+.terraform
+.terraform.lock.*
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
