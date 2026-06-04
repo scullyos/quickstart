@@ -212,10 +212,10 @@ The browser-facing URLs the SPA calls are derived from these in `docker-compose.
 Image version pins live in **`.env.base`** (checked into the repo, refreshed by `git pull`) — not in your `.env`:
 
 ```bash
-VERSION_PERSON=0.0.39
-VERSION_AUTHORIZATION=0.0.33
-VERSION_BO_ORC=0.0.48
-VERSION_SCULLYOSAPP=0.0.34
+VERSION_PERSON=0.0.57
+VERSION_AUTHORIZATION=0.0.51
+VERSION_BO_ORC=0.0.68
+VERSION_SCULLYOSAPP=0.0.50
 ```
 
 Normal flow when a new release ships: `git pull && ./scripts/sh/pull.sh && ./scripts/sh/up.sh`. No env editing required.
