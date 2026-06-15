@@ -238,7 +238,14 @@ LLM_API_KEY=AIza...
 # LLM_PROVIDER=anthropic
 # LLM_MODEL=claude-haiku-4-5-20251001
 # LLM_API_KEY=sk-ant-api03-...
+
+# OR a local / OpenAI-compatible runtime (Ollama, LM Studio, vLLM, …)
+# LLM_PROVIDER=openai-compatible
+# LLM_MODEL=llama3.1:70b-instruct
+# LLM_API_KEY=ollama
 ```
+
+For a local `openai-compatible` runtime you also need `LLM_BASE_URL`, which is set in `env/bo-orc.env` (not `.env`) — it's only valid for that provider, so it can't be forwarded with an empty default like the cloud vars. The runtime runs on your host while `bo-orc-ms` runs in a container, so use `http://host.docker.internal:11434/v1` (Ollama's default port), not `localhost`. On a Linux host, also add `extra_hosts: ["host.docker.internal:host-gateway"]` to `bo-orc-ms`. See the comments in `env/bo-orc.env`.
 
 **Your key never leaves your machine.** It's read by your local `bo-orc-ms` container and used to call the LLM provider directly. The platform does not phone home and does not relay your key anywhere.
 
