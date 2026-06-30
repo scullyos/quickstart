@@ -59,7 +59,7 @@ services:
     entrypoint: ["node", "/app/node_modules/@onthebits/core/dist/src/db/orm.exec.js", "--command", "migrate:run"]
 
   authorization-db-init:
-    image: ghcr.io/scullyos/authorization-ms:0.0.55
+    image: ghcr.io/scullyos/authorization-ms:0.0.56
     container_name: authorization-db-init
     restart: "no"
     networks:
@@ -86,7 +86,7 @@ services:
     entrypoint: ["node", "/app/node_modules/@onthebits/core/dist/src/db/orm.exec.js", "--command", "migrate:run"]
 
   bo-orc-db-init:
-    image: ghcr.io/scullyos/bo-orc-ms:0.0.74
+    image: ghcr.io/scullyos/bo-orc-ms:0.0.76
     container_name: bo-orc-db-init
     restart: "no"
     networks:
@@ -149,7 +149,7 @@ services:
       start_period: 90s
 
   authorization-ms:
-    image: ghcr.io/scullyos/authorization-ms:0.0.55
+    image: ghcr.io/scullyos/authorization-ms:0.0.56
     container_name: authorization-ms
     restart: unless-stopped
     networks:
@@ -179,7 +179,7 @@ services:
       start_period: 90s
 
   bo-orc-ms:
-    image: ghcr.io/scullyos/bo-orc-ms:0.0.74
+    image: ghcr.io/scullyos/bo-orc-ms:0.0.76
     container_name: bo-orc-ms
     restart: unless-stopped
     networks:
@@ -218,7 +218,7 @@ services:
       start_period: 90s
 
   scullyosapp:
-    image: ghcr.io/scullyos/scullyosapp-webapp:0.0.57
+    image: ghcr.io/scullyos/scullyosapp-webapp:0.0.58
     container_name: scullyosapp
     restart: unless-stopped
     networks:
