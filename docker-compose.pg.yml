@@ -218,7 +218,7 @@ services:
       start_period: 90s
 
   scullyosapp:
-    image: ghcr.io/scullyos/scullyosapp-webapp:0.0.58
+    image: ghcr.io/scullyos/scullyosapp-webapp:0.0.59
     container_name: scullyosapp
     restart: unless-stopped
     networks:
