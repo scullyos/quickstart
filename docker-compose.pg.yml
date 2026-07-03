@@ -30,7 +30,7 @@ services:
       start_period: 20s
 
   person-db-init:
-    image: ghcr.io/scullyos/person-ms:0.0.62
+    image: ghcr.io/scullyos/person-ms:0.0.64
     container_name: person-db-init
     restart: "no"
     networks:
@@ -115,7 +115,7 @@ services:
     entrypoint: ["node", "/app/node_modules/@onthebits/core/dist/src/db/orm.exec.js", "--command", "migrate:run"]
 
   person-ms:
-    image: ghcr.io/scullyos/person-ms:0.0.62
+    image: ghcr.io/scullyos/person-ms:0.0.64
     container_name: person-ms
     restart: unless-stopped
     networks:
