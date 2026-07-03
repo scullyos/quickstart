@@ -1,7 +1,6 @@
 # ScullyOS Quickstart — single-host docker compose definition.
 # Designed to be run from this directory: `docker compose up -d`.
 # See README.md for prerequisites and walkthrough.
-# See ../docs/scullyos-quickstart-design.md for the full design.
 
 name: scullyos
 
@@ -174,8 +173,7 @@ services:
     # by the time the readiness probe returns 200 the /mcp route is also
     # registered and listening. (We previously also probed /mcp itself,
     # but that produced log noise: every healthcheck cycle was a
-    # session-less GET that mcp-core correctly rejects + logs. See
-    # ../docs/todo.md "MCP rejection log noise" for the long-term fix.)
+    # session-less GET that mcp-core correctly rejects + logs.)
     # Generous timing to match mysql / ES — on slow hosts (WSL2, low-RAM
     # Docker Desktop), the *-db-init containers can chew up several minutes
     # before this service even starts, by which point the host is already

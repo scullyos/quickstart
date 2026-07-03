@@ -51,8 +51,6 @@ Log in to the web app with the seed admin (set in `.env`).
 
 Every service API is automatically exposed as an MCP tool. The backoffice agent can operate all services out of the box.
 
-Full architecture in [docs/scullyos-quickstart-design.md](../docs/scullyos-quickstart-design.md).
-
 ### Architecture
 
 ```
@@ -416,8 +414,6 @@ Restore: reverse the tar, with the stack stopped + volumes empty (`docker compos
 - Replicas / HA — single instance per service. For prod, use the gitops k8s deploy.
 - Telemetry — `USE_APM=no` for all services. No OTel collector in this stack.
 - Outbound event publishing — Localstack is NOT included; `IS_PUBLISHER=no` for the publishing services.
-
-For the full design, including how the quickstart relates to the production k8s deployment, see [docs/scullyos-quickstart-design.md](../docs/scullyos-quickstart-design.md).
 
 ---
 
