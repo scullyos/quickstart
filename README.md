@@ -224,18 +224,18 @@ Normal flow when a new release ships: `git pull && ./scripts/sh/pull.sh && ./scr
 
 The Admin Agent uses an LLM to drive the agent. **It's on by default** (`USE_AGENT=yes`), so the chat panel appears in the backoffice out of the box. The shipped `.env.example` sets `LLM_API_KEY` to a placeholder so the stack boots without real LLM credentials — but the agent can't actually respond until you give it a real key. To turn the agent off entirely (panel hidden, no key needed), set `USE_AGENT=no` in `.env`.
 
-To make the agent respond, replace the placeholder `LLM_API_KEY` in `.env` with a real key. Defaults for `LLM_PROVIDER` / `LLM_MODEL` already point at Google's Gemini Flash; switch the trio if you'd rather use Anthropic:
+To make the agent respond, replace the placeholder `LLM_API_KEY` in `.env` with a real key. Defaults for `LLM_PROVIDER` / `LLM_MODEL` already point at Anthropic's Claude Sonnet; switch the trio if you'd rather use Google's free tier or a local runtime:
 
 ```bash
-# Google (default) — get a key at https://aistudio.google.com/apikey
-LLM_PROVIDER=google
-LLM_MODEL=gemini-2.5-flash
-LLM_API_KEY=AIza...
+# Anthropic (default) — get a key at https://console.anthropic.com/settings/keys
+LLM_PROVIDER=anthropic
+LLM_MODEL=claude-sonnet-4-6
+LLM_API_KEY=sk-ant-api03-...
 
-# OR Anthropic
-# LLM_PROVIDER=anthropic
-# LLM_MODEL=claude-haiku-4-5-20251001
-# LLM_API_KEY=sk-ant-api03-...
+# OR Google Gemini (has a free tier — https://aistudio.google.com/apikey)
+# LLM_PROVIDER=google
+# LLM_MODEL=gemini-2.5-flash
+# LLM_API_KEY=AIza...
 
 # OR a local / OpenAI-compatible runtime (Ollama, LM Studio, vLLM, …)
 # LLM_PROVIDER=openai-compatible
