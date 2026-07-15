@@ -207,13 +207,13 @@ The browser-facing URLs the SPA calls are derived from these in `docker-compose.
 
 ### Image versions
 
-Image version pins live in **`.env.base`** (checked into the repo, refreshed by `git pull`) — not in your `.env`:
+Image version pins live in **`.env.base`** (checked into the repo, refreshed by `git pull`) — not in your `.env`. `.env.base` is the source of truth; the values below are illustrative:
 
 ```bash
-VERSION_PERSON=0.0.57
-VERSION_AUTHORIZATION=0.0.51
-VERSION_BO_ORC=0.0.68
-VERSION_SCULLYOSAPP=0.0.50
+VERSION_PERSON=0.0.70
+VERSION_AUTHORIZATION=0.0.59
+VERSION_BO_ORC=0.0.84
+VERSION_SCULLYOSAPP=0.0.67
 ```
 
 Normal flow when a new release ships: `git pull && ./scripts/sh/pull.sh && ./scripts/sh/up.sh`. No env editing required.
@@ -256,6 +256,10 @@ After replacing the key, recreate `bo-orc-ms` so it picks up the new env:
 `--no-deps` is important: without it, compose walks the `depends_on` chain and also recreates mysql / person-ms / authorization-ms (and the db-init one-shots). With `--no-deps` only `bo-orc-ms` is touched.
 
 To go back to the disabled state, restore the placeholder value (copy it back from `.env.example`) and recreate `bo-orc-ms` the same way.
+
+### A note on secrets
+
+For the quickstart, passwords and keys live in plaintext on-disk (`.env`, `env/*.env`, the bundled dev JWT keypair) so the stack boots with zero external setup — that's the whole point of a quickstart. **A real deployment does not do this.** The platform ships a config layer that resolves secrets from a secret manager out of the box, so in production these same values come from your vault rather than a file on disk. Nothing here is wired to phone home or ship a secret anywhere; the plaintext is a local-dev convenience, not the platform's security model.
 
 ### Sending YOUR containers' logs to Kibana
 
