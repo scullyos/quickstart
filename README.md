@@ -8,7 +8,7 @@ Spin up the ScullyOS platform on a single host with four commands. Identity, aut
 
 - **Docker must be running.** Start Docker Desktop (or your Docker daemon) before invoking the wrappers.
 - **Windows users: use a bash terminal** — Git Bash or WSL. The `scripts/sh/*.sh` wrappers are POSIX shell and won't run from `cmd.exe` / PowerShell directly.
-- **Default LLM provider is Google Gemini** — swappable to Anthropic (or left disabled) via `LLM_PROVIDER` / `LLM_MODEL` / `LLM_API_KEY` in `.env`; see [Enabling the Admin Agent](#enabling-the-admin-chat-panel-optional).
+- **The Admin Agent is on by default** — set a real `LLM_API_KEY` in `.env` for it to respond (default provider is Google Gemini, swappable to Anthropic via `LLM_PROVIDER` / `LLM_MODEL`), or set `USE_AGENT=no` to turn it off; see [The Admin Agent](#the-admin-agent).
 - **Safe to re-run on failure.** `docker compose up -d` is idempotent — if `up` fails partway (network blip, slow image pull, mistyped env), fix the cause and run `./scripts/sh/up.sh` again; already-created containers are reused.
 
 ```bash
@@ -86,7 +86,7 @@ Every service API is automatically exposed as an MCP tool. The backoffice agent 
 
 ## First-Run Flow
 
-1. `cp .env.example .env`, then open `.env` and edit values you care about (seed admin credentials, Kibana password, host bind/ports, `LLM_API_KEY` — leave the shipped placeholder to keep the agent disabled, or replace it with a real key to enable the Backoffice AI Agent). Image versions are NOT in `.env` — they ship in `.env.base` (checked-in, refreshed by `git pull`). The shipped defaults boot a working stack but use a placeholder admin email and a well-known password — change them before the first `up -d` since the bootstrap migration is idempotent.
+1. `cp .env.example .env`, then open `.env` and edit values you care about (seed admin credentials, Kibana password, host bind/ports, `LLM_API_KEY` — the Backoffice AI Agent is on by default, so replace the shipped placeholder with a real key for it to respond, or set `USE_AGENT=no` to turn the agent off). Image versions are NOT in `.env` — they ship in `.env.base` (checked-in, refreshed by `git pull`). The shipped defaults boot a working stack but use a placeholder admin email and a well-known password — change them before the first `up -d` since the bootstrap migration is idempotent.
 2. `./scripts/sh/pull.sh` — downloads four ScullyOS images plus mysql, ES, Kibana, fluent-bit, curl. ~30-60 s on a decent connection, ~2 GB.
 3. `./scripts/sh/up.sh` — starts everything in dependency order:
    - mysql comes up healthy
@@ -220,11 +220,11 @@ Normal flow when a new release ships: `git pull && ./scripts/sh/pull.sh && ./scr
 
 **Pinning a specific version locally** (e.g. for a rollback): add a `VERSION_*` line to your `.env`. The wrappers pass `.env` after `.env.base` so same-named vars in `.env` override `.env.base`. Remove the override later to flow with `git pull` again.
 
-### Enabling the Admin Agent (optional)
+### The Admin Agent
 
-The Admin Agent uses an LLM to drive the agent. **It's optional.** The shipped `.env.example` sets `LLM_API_KEY` to a placeholder so the stack boots without any LLM credentials; in that state the chat panel stays hidden and the SPA shows a dismissible notice explaining how to enable it.
+The Admin Agent uses an LLM to drive the agent. **It's on by default** (`USE_AGENT=yes`), so the chat panel appears in the backoffice out of the box. The shipped `.env.example` sets `LLM_API_KEY` to a placeholder so the stack boots without real LLM credentials — but the agent can't actually respond until you give it a real key. To turn the agent off entirely (panel hidden, no key needed), set `USE_AGENT=no` in `.env`.
 
-To turn it on, replace the placeholder `LLM_API_KEY` in `.env` with a real key. Defaults for `LLM_PROVIDER` / `LLM_MODEL` already point at Google's Gemini Flash; switch the trio if you'd rather use Anthropic:
+To make the agent respond, replace the placeholder `LLM_API_KEY` in `.env` with a real key. Defaults for `LLM_PROVIDER` / `LLM_MODEL` already point at Google's Gemini Flash; switch the trio if you'd rather use Anthropic:
 
 ```bash
 # Google (default) — get a key at https://aistudio.google.com/apikey

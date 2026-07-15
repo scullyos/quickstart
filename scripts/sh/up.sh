@@ -19,9 +19,10 @@
 # HOST_BIND / HOST_PORT_FRONTEND, with the same defaults as
 # docker-compose.yml: 127.0.0.1:18080) and the seed admin credentials
 # (SEED_USER_NAME / SEED_USER_PASSWORD from quickstart/.env) so the
-# operator can log straight in, and warns if LLM_API_KEY is unset or
-# still the shipped placeholder — in which case the Admin Chat agent
-# stays disabled. On failure (compose exit non-zero) the credentials
+# operator can log straight in, and warns if LLM_API_KEY is still the
+# shipped placeholder — in which case the Admin Chat agent is on
+# (USE_AGENT=yes) but can't respond until a real key is set. On failure
+# (compose exit non-zero) the credentials
 # block is suppressed: half-up stacks shouldn't advertise a login that
 # doesn't work yet.
 #
@@ -31,9 +32,10 @@ QUICKSTART_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BASE_ENV_FILE="${QUICKSTART_BASE_ENV_FILE:-$QUICKSTART_DIR/.env.base}"
 ENV_FILE="${QUICKSTART_ENV_FILE:-$QUICKSTART_DIR/.env}"
 
-# Sentinel that bo-orc treats as "no key configured" — must stay in sync
-# with PLACEHOLDER_LLM_API_KEY in bo-orc/src/modules/features/features.controller.ts.
-PLACEHOLDER_LLM_API_KEY='replace-with-your-key-or-leave-as-is-to-disable-agent'
+# The placeholder LLM_API_KEY that .env.example ships — must stay in sync
+# with the LLM_API_KEY value in .env.example. Used only to nudge the operator
+# to set a real key; it lets the stack boot but the agent can't respond.
+PLACEHOLDER_LLM_API_KEY='replace-with-your-llm-api-key'
 
 cd "$QUICKSTART_DIR" || exit 1
 
@@ -104,8 +106,9 @@ echo "  password: ${seed_pwd:-<unset>}"
 
 if [ -z "$llm_key" ] || [ "$llm_key" = "$PLACEHOLDER_LLM_API_KEY" ]; then
     echo
-    echo "⚠ LLM_API_KEY is not set in $ENV_FILE — the Backoffice AI Agent stays disabled."
-    echo "  To enable it:"
+    echo "⚠ LLM_API_KEY is still the placeholder in $ENV_FILE — the Backoffice AI Agent"
+    echo "  is on but can't respond until you set a real key (or set USE_AGENT=no to disable it)."
+    echo "  To set a key:"
     echo "    1. Get a provider API key:"
     echo "         Google Gemini (default): https://aistudio.google.com/apikey"
     echo "         Anthropic:               https://console.anthropic.com/settings/keys"

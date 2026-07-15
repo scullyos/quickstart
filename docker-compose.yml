@@ -234,9 +234,10 @@ services:
       ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       # Required by bo-orc migrations + runtime references to the seed admin.
       SEED_USER_NAME: ${SEED_USER_NAME}
-      # Agent / LLM — set LLM_API_KEY in quickstart/.env to enable the
-      # Admin Chat panel. Empty key disables the chat (rest of the stack
-      # still works).
+      # Agent / LLM — the Admin Chat agent is ON by default (USE_AGENT=yes);
+      # set USE_AGENT=no in quickstart/.env to turn it off. With it on, set a
+      # real LLM_API_KEY in quickstart/.env for the agent to respond.
+      USE_AGENT: ${USE_AGENT:-yes}
       LLM_PROVIDER: ${LLM_PROVIDER}
       LLM_MODEL: ${LLM_MODEL}
       LLM_API_KEY: ${LLM_API_KEY}
