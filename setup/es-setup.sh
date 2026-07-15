@@ -45,11 +45,24 @@ else
     echo "[es-setup] Authenticated as elastic — first-time bootstrap."
 fi
 
+# The first security-API call forces creation of the .security-7 index,
+# which on a cold host can exceed the 30s cluster-event timeout and return
+# 503. curl -s swallows that, so retry until ES acks a 200 and fail fast if
+# it never does — anonymous fluent-bit writes 401 without this role.
 echo "[es-setup] Ensuring fluent_writer role..."
-curl -s -u "$AUTH" \
+i=0
+until [ "$(curl -s -o /dev/null -w '%{http_code}' -u "$AUTH" \
     -X PUT "${ES_BASE}/_security/role/fluent_writer" \
     -H "Content-Type: application/json" \
-    -d '{"indices":[{"names":["dev-ms-logs-*","*-ms-*"],"privileges":["create_index","index","write","create"]}]}'
+    -d '{"indices":[{"names":["dev-ms-logs-*","*-ms-*"],"privileges":["create_index","index","write","create"]}]}')" = "200" ]; do
+    i=$((i + 1))
+    if [ "$i" -ge 12 ]; then
+        echo "[es-setup] FATAL: fluent_writer role not created after $i attempts" >&2
+        exit 1
+    fi
+    echo "[es-setup] role PUT not ready (attempt $i), retrying in 10s..."
+    sleep 10
+done
 echo
 
 echo "[es-setup] Ensuring microservices index template..."
