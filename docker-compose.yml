@@ -168,6 +168,9 @@ services:
       SEED_USER_NAME: ${SEED_USER_NAME}
       SEED_USER_PROVIDER: ${SEED_USER_PROVIDER}
       BOOTSTRAP_ADMIN_PASSWORD: ${SEED_USER_PASSWORD}
+      # Downstream trust list. Override once at quickstart/.env to add a new
+      # orc's issuer (e.g. scullyos-orc,bo-orc,app-orc) for every verifier.
+      JWT_ISSUER_EXPECTED: ${JWT_ISSUER_EXPECTED:-scullyos-orc,bo-orc}
       #FIREBASE_KEY_FILE=config/your-fb-service-account.json
     # /v1/ready is sufficient — NestJS module loading is synchronous, so
     # by the time the readiness probe returns 200 the /mcp route is also
@@ -202,6 +205,7 @@ services:
       DB_PASSWORD: ${MYSQL_APP_PASSWORD}
       DB_DATABASE_NAME: ${MYSQL_DATABASE}
       ROOT_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      JWT_ISSUER_EXPECTED: ${JWT_ISSUER_EXPECTED:-scullyos-orc,bo-orc}
     # See person-ms healthcheck comment — same /v1/ready-is-enough rationale
     # and same generous timing for slow-host tolerance.
     healthcheck:
