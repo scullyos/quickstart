@@ -86,6 +86,8 @@ Every service API is automatically exposed as an MCP tool. The backoffice agent 
 
 ## First-Run Flow
 
+> Prefer to use `docker compose` directly for the first run too (no `./scripts/sh/*` wrappers)? See [Calling docker compose directly](#calling-docker-compose-directly) — substitute the bare compose commands for the `./scripts/sh/pull.sh` / `./scripts/sh/up.sh` steps below.
+
 1. `cp .env.example .env`, then open `.env` and edit values you care about (seed admin credentials, Kibana password, host bind/ports, `LLM_API_KEY` — the Backoffice AI Agent is on by default, so replace the shipped placeholder with a real key for it to respond, or set `USE_AGENT=no` to turn the agent off). Image versions are NOT in `.env` — they ship in `.env.base` (checked-in, refreshed by `git pull`). The shipped defaults boot a working stack but use a placeholder admin email and a well-known password — change them before the first `up -d` since the bootstrap migration is idempotent.
 2. `./scripts/sh/pull.sh` — downloads four ScullyOS images plus mysql, ES, Kibana, fluent-bit, curl. ~30-60 s on a decent connection, ~2 GB.
 3. `./scripts/sh/up.sh` — starts everything in dependency order:
