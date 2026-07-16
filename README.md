@@ -18,7 +18,7 @@ cp .env.example .env    # then edit .env — at minimum set SEED_USER_NAME / SEE
 ./scripts/sh/up.sh
 ```
 
-**Use the `./scripts/sh/*` wrappers, not bare `docker compose`.** Image versions live in a checked-in `.env.base` so a `git pull` delivers new versions automatically; the wrappers stitch `.env.base` + your `.env` together via `docker compose --env-file ... --env-file ...`. Calling `docker compose up -d` on its own won't see the version pins and will fail to resolve the image tags. If you must invoke compose directly, see [Calling docker compose directly](#calling-docker-compose-directly).
+**The `./scripts/sh/*` wrappers are the easy path — but bare `docker compose` works too if you pass both env files.** Image versions live in a checked-in `.env.base` so a `git pull` delivers new versions automatically; the wrappers stitch `.env.base` + your `.env` together via `docker compose --env-file ... --env-file ...`. Calling `docker compose up -d` on its *own* won't see the version pins and will fail to resolve the image tags — but `docker compose --env-file ./.env.base --env-file ./.env up -d` is a full drop-in for `./scripts/sh/up.sh`. Prefer no scripts? See [Calling docker compose directly](#calling-docker-compose-directly).
 
 After ~2 min the stack is up. Open:
 
@@ -312,19 +312,27 @@ All four scripts forward extra args to docker compose, so e.g. `./scripts/sh/up.
 
 ### Calling docker compose directly
 
-If you need to invoke `docker compose` without a wrapper (e.g. `logs`, `ps`, `restart`), pass both env files explicitly so version interpolation resolves:
+Prefer not to run the shell scripts at all? You can drive the whole stack with bare `docker compose` — you just have to pass both env files so version interpolation resolves (`.env.base` for the image pins, `.env` for your local config):
 
 ```bash
-docker compose --env-file ./.env.base --env-file ./.env <subcommand>
+# Full stack up — drop-in replacement for ./scripts/sh/up.sh:
+docker compose --env-file ./.env.base --env-file ./.env up -d
+
+# ...any other subcommand works the same way:
+docker compose --env-file ./.env.base --env-file ./.env logs -f
+docker compose --env-file ./.env.base --env-file ./.env ps
 ```
 
-Or export `COMPOSE_ENV_FILES` once per shell (compose v2.24+):
+Or export `COMPOSE_ENV_FILES` once per shell (compose v2.24+) and then use bare `docker compose` for everything:
 
 ```bash
 export COMPOSE_ENV_FILES=./.env.base:./.env
-docker compose ps        # now works without --env-file flags
+docker compose up -d     # now works without --env-file flags
+docker compose ps
 docker compose logs -f
 ```
+
+Both are functionally identical to `./scripts/sh/up.sh` — the stack that comes up is the same. The only things you give up are the wrapper's conveniences: the wall-clock timing (`Xm YYs`), and the printed web-app URL / seed login credentials / LLM-key nudge at the end.
 
 ## Common Operations
 
