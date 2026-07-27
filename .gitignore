@@ -3,6 +3,10 @@
 .env
 .env.local
 .env.*.local
+
+# Per-checkout stack identity, written on first `up` — local state, not
+# something a clone should inherit.
+.stack-name
 *.pem
 *.key
 id_rsa*

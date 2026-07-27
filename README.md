@@ -207,6 +207,42 @@ HOST_PORT_KIBANA=25601
 
 The browser-facing URLs the SPA calls are derived from these in `docker-compose.yml`, so you only edit one place.
 
+### Running more than one quickstart
+
+Each checkout has a **stack identity** — a short name that becomes the compose
+project name, prefixes the container names, and travels into the running
+services. It's what lets you tell environments apart, and what stops two
+checkouts from fighting over the same containers and volumes.
+
+The name is derived from the directory: `quickstart` → `scullyos` (so a stock
+install is unchanged), `quickstart-navis` → `navis`. It's written to
+`.stack-name` on first `up` so renaming the directory later doesn't silently
+re-identify a stack that already owns data. Pin it explicitly with `STACK_NAME`
+in `.env` if you prefer.
+
+To run a second checkout alongside the first, give it a free port range —
+everything else is automatic:
+
+```bash
+# in the second checkout's .env
+PORT_OFFSET=100        # web app 18180, bo-orc 18101, Kibana 15701
+```
+
+Then `./scripts/sh/up.sh` there brings up `navis-person-ms`, `navis-mysql`, …
+on the `navis` project, with its own `navis_mysql-data` / `navis_es-data`
+volumes. Running `up` from a checkout while another one owns that project name
+is refused with an explanation rather than silently recreating the other
+stack's containers.
+
+Where the identity shows up once the stack is running:
+
+| Surface | How to see it |
+| --- | --- |
+| Wrapper scripts | `./scripts/sh/whoami.sh` |
+| Docker | `docker compose ls`, or the `com.docker.compose.project.working_dir` label |
+| Container names | `navis-person-ms` rather than `person-ms` |
+| Logs / Kibana | the `stack` field on every record |
+
 ### Image versions
 
 Image version pins live in **`.env.base`** (checked into the repo, refreshed by `git pull`) — not in your `.env`. `.env.base` is the source of truth; the values below are illustrative:
@@ -294,6 +330,8 @@ Your services get structured, searchable, production-grade logging — just by a
 ./scripts/sh/up.sh --wait       # ...and block until all healthchecks pass
 ./scripts/sh/down.sh            # docker compose down (volumes KEPT)
 ./scripts/sh/down.sh --wipe     # docker compose down -v (volumes wiped)
+./scripts/sh/whoami.sh          # which checkout owns the running stack
+./scripts/sh/whoami.sh --all    # every ScullyOS stack on this host
 ```
 
 Sample output:

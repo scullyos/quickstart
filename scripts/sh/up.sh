@@ -57,32 +57,18 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-"$SCRIPT_DIR/timed.sh" "compose up -d" \
+# Resolves + exports STACK_NAME / STACK_PREFIX / offset-adjusted ports.
+. "$SCRIPT_DIR/stack-identity.sh"
+
+# Refuse to adopt another checkout's containers and volumes.
+assert_stack_ownership || exit 1
+apply_port_offset || exit 1
+warn_on_stale_fluent_bit_regex
+persist_stack_name
+
+"$SCRIPT_DIR/timed.sh" "compose up -d (stack: $STACK_NAME)" \
     docker compose --env-file "$BASE_ENV_FILE" --env-file "$ENV_FILE" up -d "$@"
 exit_code=$?
-
-# Read a `KEY=value` line from a stacked env-file list (later files
-# override earlier ones, matching the docker compose --env-file order),
-# stripping optional surrounding single or double quotes. Returns empty
-# string if no file has the key — callers handle the unset case
-# explicitly. Same precedence as docker-compose.yml's ${VAR:-default}
-# fallbacks, so the printed URL matches what compose actually published.
-read_env_var() {
-    var="$1"
-    shift
-    value=""
-    for f in "$@"; do
-        [ -f "$f" ] || continue
-        line=$(grep -E "^[[:space:]]*${var}=" "$f" | tail -n 1)
-        [ -z "$line" ] && continue
-        value="${line#*=}"
-        case "$value" in
-            \"*\") value="${value#\"}"; value="${value%\"}" ;;
-            \'*\') value="${value#\'}"; value="${value%\'}" ;;
-        esac
-    done
-    printf '%s' "$value"
-}
 
 if [ "$exit_code" -ne 0 ]; then
     # Half-up stack — don't advertise login details for a webapp that
@@ -95,11 +81,12 @@ seed_user=$(read_env_var SEED_USER_NAME "$BASE_ENV_FILE" "$ENV_FILE")
 seed_pwd=$(read_env_var SEED_USER_PASSWORD "$BASE_ENV_FILE" "$ENV_FILE")
 llm_key=$(read_env_var LLM_API_KEY "$BASE_ENV_FILE" "$ENV_FILE")
 host_bind=$(read_env_var HOST_BIND "$BASE_ENV_FILE" "$ENV_FILE")
-host_port=$(read_env_var HOST_PORT_FRONTEND "$BASE_ENV_FILE" "$ENV_FILE")
-webapp_url="http://${host_bind:-127.0.0.1}:${host_port:-18080}"
+# Exported by apply_port_offset, so the URL reflects PORT_OFFSET.
+webapp_url="http://${host_bind:-127.0.0.1}:${HOST_PORT_FRONTEND:-18080}"
 
 echo
 echo "─── Web app login (from $ENV_FILE) ───"
+echo "  stack:    $STACK_NAME"
 echo "  url:      $webapp_url"
 echo "  user:     ${seed_user:-<unset>}"
 echo "  password: ${seed_pwd:-<unset>}"
