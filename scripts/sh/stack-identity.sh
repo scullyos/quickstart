@@ -200,18 +200,34 @@ EOF
     return 1
 }
 
-# Warn when a stale hand-edited fluent-bit regex can no longer match this
-# stack's prefixed container names — logs would just stop reaching ES.
-warn_on_stale_fluent_bit_regex() {
+# A hand-set include regex that predates this stack's prefix matches no
+# container at all, so log shipping stops with nothing in the output to
+# say why. This shipped as a warning first and a real install sailed past
+# it — a config value that cannot match anything is a structural error, so
+# it blocks the up instead.
+assert_fluent_bit_regex_matches_stack() {
     [ -z "$STACK_PREFIX" ] && return 0
     regex=$(read_env_var FLUENT_BIT_CONTAINER_INCLUDE_REGEX $STACK_ENV_FILES)
     [ -z "$regex" ] && return 0
     case "$regex" in
         *"$STACK_PREFIX"*) return 0 ;;
     esac
-    echo "⚠ FLUENT_BIT_CONTAINER_INCLUDE_REGEX in $ENV_FILE ('$regex') doesn't mention" >&2
-    echo "  this stack's container prefix '$STACK_PREFIX' — logs may not reach Elasticsearch." >&2
-    echo "  Remove the line to use the prefix-aware default, or add the prefix yourself." >&2
+
+    cat >&2 <<EOF
+ERROR: FLUENT_BIT_CONTAINER_INCLUDE_REGEX cannot match this stack's containers.
+
+  configured:       $regex
+  container prefix: $STACK_PREFIX
+
+This stack's containers are named ${STACK_PREFIX}<service>, so that regex
+matches nothing and no logs would reach Elasticsearch. Fix it in $ENV_FILE:
+
+  1. Preferred — empty the line so the prefix-aware compose default applies:
+       FLUENT_BIT_CONTAINER_INCLUDE_REGEX=
+  2. Or keep a custom allowlist and include the prefix yourself:
+       FLUENT_BIT_CONTAINER_INCLUDE_REGEX=^${STACK_PREFIX}(person|authorization|bo-orc)-ms\$
+EOF
+    return 1
 }
 
 # Overlay checkouts stack their compose file on top of a pinned upstream

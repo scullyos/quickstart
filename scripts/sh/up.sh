@@ -63,7 +63,7 @@ fi
 # Refuse to adopt another checkout's containers and volumes.
 assert_stack_ownership || exit 1
 apply_port_offset || exit 1
-warn_on_stale_fluent_bit_regex
+assert_fluent_bit_regex_matches_stack || exit 1
 persist_stack_name
 
 "$SCRIPT_DIR/timed.sh" "compose up -d (stack: $STACK_NAME)" \
