@@ -2,7 +2,7 @@
 # Designed to be run from this directory: `docker compose up -d`.
 # See README.md for prerequisites and walkthrough.
 
-name: scullyos
+name: ${STACK_NAME:-scullyos}
 
 networks:
   scullyos:
@@ -16,7 +16,7 @@ services:
   # ─── MySQL ─────────────────────────────────────────────────────────────────
   mysql:
     image: mysql:8.0
-    container_name: mysql
+    container_name: ${STACK_PREFIX:-}mysql
     restart: unless-stopped
     networks:
       - scullyos
@@ -61,7 +61,7 @@ services:
 
   person-db-init:
     image: ${REGISTRY}/${PERSON_IMAGE}:${VERSION_PERSON}
-    container_name: person-db-init
+    container_name: ${STACK_PREFIX:-}person-db-init
     restart: "no"
     networks:
       - scullyos
@@ -89,7 +89,7 @@ services:
 
   authorization-db-init:
     image: ${REGISTRY}/${AUTHORIZATION_IMAGE}:${VERSION_AUTHORIZATION}
-    container_name: authorization-db-init
+    container_name: ${STACK_PREFIX:-}authorization-db-init
     restart: "no"
     networks:
       - scullyos
@@ -114,7 +114,7 @@ services:
 
   bo-orc-db-init:
     image: ${REGISTRY}/${BO_ORC_IMAGE}:${VERSION_BO_ORC}
-    container_name: bo-orc-db-init
+    container_name: ${STACK_PREFIX:-}bo-orc-db-init
     restart: "no"
     networks:
       - scullyos
@@ -148,7 +148,7 @@ services:
 
   person-ms:
     image: ${REGISTRY}/${PERSON_IMAGE}:${VERSION_PERSON}
-    container_name: person-ms
+    container_name: ${STACK_PREFIX:-}person-ms
     restart: unless-stopped
     networks:
       - scullyos
@@ -190,7 +190,7 @@ services:
 
   authorization-ms:
     image: ${REGISTRY}/${AUTHORIZATION_IMAGE}:${VERSION_AUTHORIZATION}
-    container_name: authorization-ms
+    container_name: ${STACK_PREFIX:-}authorization-ms
     restart: unless-stopped
     networks:
       - scullyos
@@ -217,7 +217,7 @@ services:
 
   bo-orc-ms:
     image: ${REGISTRY}/${BO_ORC_IMAGE}:${VERSION_BO_ORC}
-    container_name: bo-orc-ms
+    container_name: ${STACK_PREFIX:-}bo-orc-ms
     restart: unless-stopped
     networks:
       - scullyos
@@ -277,7 +277,7 @@ services:
 
   scullyosapp:
     image: ${REGISTRY}/${SCULLYOSAPP_IMAGE}:${VERSION_SCULLYOSAPP}
-    container_name: scullyosapp
+    container_name: ${STACK_PREFIX:-}scullyosapp
     restart: unless-stopped
     networks:
       - scullyos
@@ -305,7 +305,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.27
-    container_name: elasticsearch
+    container_name: ${STACK_PREFIX:-}elasticsearch
     restart: unless-stopped
     networks:
       - scullyos
@@ -349,7 +349,7 @@ services:
 
   es-setup:
     image: curlimages/curl:latest
-    container_name: es-setup
+    container_name: ${STACK_PREFIX:-}es-setup
     restart: "no"
     networks:
       - scullyos
@@ -369,7 +369,7 @@ services:
 
   kibana:
     image: docker.elastic.co/kibana/kibana:7.17.27
-    container_name: kibana
+    container_name: ${STACK_PREFIX:-}kibana
     restart: unless-stopped
     networks:
       - scullyos
@@ -407,7 +407,7 @@ services:
 
   kibana-setup:
     image: curlimages/curl:latest
-    container_name: kibana-setup
+    container_name: ${STACK_PREFIX:-}kibana-setup
     restart: "no"
     networks:
       - scullyos
@@ -423,7 +423,7 @@ services:
 
   fluent-bit:
     image: fluent/fluent-bit:2.1
-    container_name: fluent-bit
+    container_name: ${STACK_PREFIX:-}fluent-bit
     restart: unless-stopped
     networks:
       - scullyos
@@ -431,7 +431,10 @@ services:
       es-setup:
         condition: service_completed_successfully
     environment:
-      FLUENT_BIT_CONTAINER_INCLUDE_REGEX: ${FLUENT_BIT_CONTAINER_INCLUDE_REGEX}
+      # fluent-bit tails /var/lib/docker/containers, so it sees every
+      # container on the host — not just this stack's. Anchoring the
+      # default on STACK_PREFIX keeps a second stack's logs out.
+      FLUENT_BIT_CONTAINER_INCLUDE_REGEX: ${FLUENT_BIT_CONTAINER_INCLUDE_REGEX:-^${STACK_PREFIX:-}(person|authorization|bo-orc)-ms$$}
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

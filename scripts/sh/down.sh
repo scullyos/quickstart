@@ -33,15 +33,22 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
+# Down must target the same compose project up.sh created, so it needs
+# the same identity resolution. Ownership is deliberately NOT asserted:
+# tearing down a stack another checkout started is a legitimate way out
+# of the collision that assert_stack_ownership reports.
+. "$SCRIPT_DIR/stack-identity.sh"
+apply_port_offset || exit 1
+
 COMPOSE="docker compose --env-file $BASE_ENV_FILE --env-file $ENV_FILE"
 
 case "${1:-}" in
     -v|--wipe|--volumes)
-        exec "$SCRIPT_DIR/timed.sh" "compose down -v (volumes WIPED)" \
+        exec "$SCRIPT_DIR/timed.sh" "compose down -v (stack: $STACK_NAME, volumes WIPED)" \
             $COMPOSE down -v
         ;;
     ""|--keep)
-        exec "$SCRIPT_DIR/timed.sh" "compose down (volumes kept)" \
+        exec "$SCRIPT_DIR/timed.sh" "compose down (stack: $STACK_NAME, volumes kept)" \
             $COMPOSE down
         ;;
     -h|--help)
