@@ -28,5 +28,11 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
+# Pull only reads image refs, but compose still interpolates the whole
+# file — sourcing keeps STACK_NAME / STACK_PREFIX defined so it doesn't
+# warn on unset vars.
+. "$SCRIPT_DIR/stack-identity.sh"
+apply_port_offset || exit 1
+
 exec "$SCRIPT_DIR/timed.sh" "compose pull" \
     docker compose --env-file "$BASE_ENV_FILE" --env-file "$ENV_FILE" pull "$@"
