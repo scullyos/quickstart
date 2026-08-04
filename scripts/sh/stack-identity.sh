@@ -30,6 +30,13 @@ STACK_NAME_DEFAULT='scullyos'
 
 STACK_NAME_FILE="${STACK_NAME_FILE:-$QUICKSTART_DIR/.stack-name}"
 
+# The directory docker compose stamps on every container as
+# project.working_dir: the base directory of the FIRST -f file, which is
+# not always this checkout. Overlay checkouts pass .upstream/ first and
+# set this accordingly, otherwise the ownership check compares against a
+# directory compose never writes and rejects the checkout's own stack.
+STACK_PROJECT_DIR="${STACK_PROJECT_DIR:-$QUICKSTART_DIR}"
+
 # The env-file chain to read config from, in docker compose --env-file
 # order (later wins). Overlay checkouts stack four files and set this
 # before sourcing; a plain checkout gets the usual two.
@@ -179,7 +186,7 @@ stack_running_dir() {
 assert_stack_ownership() {
     owner=$(stack_running_dir)
     [ -z "$owner" ] && return 0
-    [ "$(normalize_path "$owner")" = "$(normalize_path "$QUICKSTART_DIR")" ] && return 0
+    [ "$(normalize_path "$owner")" = "$(normalize_path "$STACK_PROJECT_DIR")" ] && return 0
 
     cat >&2 <<EOF
 ERROR: compose project '$STACK_NAME' is already in use by another quickstart.

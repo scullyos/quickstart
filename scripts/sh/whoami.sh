@@ -54,7 +54,7 @@ if [ -z "$owner" ]; then
 fi
 
 echo "  started from: $owner"
-if [ "$(normalize_path "$owner")" = "$(normalize_path "$QUICKSTART_DIR")" ]; then
+if [ "$(normalize_path "$owner")" = "$(normalize_path "$STACK_PROJECT_DIR")" ]; then
     echo "  owner:        this checkout"
     exit 0
 fi
