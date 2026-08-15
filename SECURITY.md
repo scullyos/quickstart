@@ -41,6 +41,6 @@ repo instead, once those repos are public):
 
 ## Supported versions
 
-Only the `master` branch is supported. Older tagged versions of the
+Only the `main` branch is supported. Older tagged versions of the
 quickstart receive no fixes — please update to the latest before
 reporting.
