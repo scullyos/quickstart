@@ -1,3 +1,12 @@
+# Text files are stored and checked out with LF everywhere. Without this a
+# Windows clone rewrites LF -> CRLF on disk, which breaks shebangs in Linux
+# containers and makes formatters rewrite whole files.
+* text=auto eol=lf
+
+# cmd.exe mis-parses these without CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 # Force LF for files executed inside Linux containers. Without this, a Windows
 # checkout with the default core.autocrlf=true rewrites LF -> CRLF on disk, and
 # /bin/sh inside the container reads `set -e\r` as an illegal option.
