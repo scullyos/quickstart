@@ -391,35 +391,19 @@ services:
       XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY}
     ports:
       - "${HOST_BIND:-127.0.0.1}:${HOST_PORT_KIBANA}:5601"
+    volumes:
+      - ./setup:/setup:ro
     # Generous timing — Kibana on slow hosts can take 1-2 min on top of
     # ES being up. Mirrors ES timing for consistency. start_period 90s
     # + 30 × 10s retries = 6.5 min total grace.
+    # Healthy = Kibana answers AND the index pattern / Discover defaults are
+    # applied (setup/kibana-setup.sh), so no one-shot container is needed.
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -sf -u ${KIBANA_USERNAME}:${KIBANA_PASSWORD} http://localhost:5601/api/status || exit 1",
-        ]
+      test: ["CMD-SHELL", "sh /setup/kibana-setup.sh"]
       interval: 10s
-      timeout: 5s
+      timeout: 15s
       retries: 30
       start_period: 90s
-
-  kibana-setup:
-    image: curlimages/curl:latest
-    container_name: ${STACK_PREFIX:-}kibana-setup
-    restart: "no"
-    networks:
-      - scullyos
-    depends_on:
-      kibana:
-        condition: service_healthy
-    environment:
-      ES_USERNAME: ${KIBANA_USERNAME}
-      ES_PASSWORD: ${KIBANA_PASSWORD}
-    volumes:
-      - ./setup:/setup:ro
-    entrypoint: ["/bin/sh", "/setup/kibana-setup.sh"]
 
   fluent-bit:
     image: fluent/fluent-bit:2.1

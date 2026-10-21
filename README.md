@@ -94,7 +94,7 @@ Every service API is automatically exposed as an MCP tool. The backoffice agent 
    - mysql comes up healthy
    - three `*-db-init` one-shots run migrations (creates schema, seeds admin user + password)
    - person-ms / authorization-ms / bo-orc-ms come up healthy
-   - elasticsearch + es-setup + kibana + kibana-setup + fluent-bit come up
+   - elasticsearch + es-setup + kibana + fluent-bit come up (kibana is healthy once its index pattern is set up)
    - scullyosapp comes up last (waits for bo-orc healthy)
 4. `docker compose --env-file ./.env.base --env-file ./.env ps` — every service should be `Up` or, for `*-db-init` and `*-setup`, `Exited (0)`. (See [Calling docker compose directly](#calling-docker-compose-directly) to set `COMPOSE_ENV_FILES` once and skip the flags.)
 
