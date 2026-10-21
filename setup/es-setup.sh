@@ -66,10 +66,11 @@ done
 echo
 
 echo "[es-setup] Ensuring microservices index template..."
-curl -s -u "$AUTH" \
+# Priority 200: unique, so it overlaps neither Kibana's templates (0) nor the built-in logs/metrics ones (100).
+curl -s --fail-with-body -u "$AUTH" \
     -X PUT "${ES_BASE}/_index_template/microservices-template" \
     -H "Content-Type: application/json" \
-    -d '{"index_patterns":["*-ms-*"],"template":{"mappings":{"properties":{"@timestamp":{"type":"date","format":"strict_date_optional_time||yyyy-MM-dd'\''T'\''HH:mm:ss.SSS||yyyy-MM-dd'\''T'\''HH:mm:ss.SSSZZ"},"ms":{"type":"keyword"},"message":{"type":"text"},"traceId":{"type":"keyword"},"spanId":{"type":"keyword"},"msreqid":{"type":"keyword"},"entityType":{"type":"keyword"},"entityId":{"type":"keyword"},"errorStack":{"type":"text"},"context":{"type":"keyword"},"level":{"type":"keyword"}}}}}'
+    -d '{"index_patterns":["*-ms-*"],"priority":200,"template":{"mappings":{"properties":{"@timestamp":{"type":"date","format":"strict_date_optional_time||yyyy-MM-dd'\''T'\''HH:mm:ss.SSS||yyyy-MM-dd'\''T'\''HH:mm:ss.SSSZZ"},"ms":{"type":"keyword"},"message":{"type":"text"},"traceId":{"type":"keyword"},"spanId":{"type":"keyword"},"msreqid":{"type":"keyword"},"entityType":{"type":"keyword"},"entityId":{"type":"keyword"},"errorStack":{"type":"text"},"context":{"type":"keyword"},"level":{"type":"keyword"}}}}}'
 echo
 
 if [ "$BOOTSTRAPPED" = "0" ]; then
