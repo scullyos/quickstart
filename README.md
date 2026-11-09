@@ -8,7 +8,7 @@ Spin up the ScullyOS platform on a single host with four commands. Identity, aut
 
 - **Docker must be running.** Start Docker Desktop (or your Docker daemon) before invoking the wrappers.
 - **Windows users: use a bash terminal** — Git Bash or WSL. The `scripts/sh/*.sh` wrappers are POSIX shell and won't run from `cmd.exe` / PowerShell directly.
-- **The Admin Agent is on by default** — set a real `LLM_API_KEY` in `.env` for it to respond (default provider is Google Gemini, swappable to Anthropic via `LLM_PROVIDER` / `LLM_MODEL`), or set `USE_AGENT=no` to turn it off; see [The Admin Agent](#the-admin-agent).
+- **The Admin Agent is on by default** — set a real `LLM_API_KEY` in `.env` for it to respond (default provider is Anthropic, swappable to Google Gemini or an OpenAI-compatible endpoint via `LLM_PROVIDER` / `LLM_MODEL`), or set `USE_AGENT=no` to turn it off; see [The Admin Agent](#the-admin-agent).
 - **Safe to re-run on failure.** `docker compose up -d` is idempotent — if `up` fails partway (network blip, slow image pull, mistyped env), fix the cause and run `./scripts/sh/up.sh` again; already-created containers are reused.
 
 ```bash
